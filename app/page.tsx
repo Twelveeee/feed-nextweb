@@ -14,12 +14,25 @@ import Loading from '@/components/ui/Loading';
 import ErrorMessage from '@/components/ui/ErrorMessage';
 import Toast from '@/components/ui/Toast';
 import GroupSelector from '@/components/filter/GroupSelector';
+import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
 
 /**
  * RSS 阅读器主页面组件
  */
 function RSSReaderContent() {
-  const { state, setFeeds, setSelectedFeed, setGroupBy, setCategoryFilter, setSourceFilter, setSearchQuery, setLoading, setError } = useFeed();
+  const {
+    state,
+    setFeeds,
+    setSelectedFeed,
+    setGroupBy,
+    setCategoryFilter,
+    setSourceFilter,
+    setSearchQuery,
+    setReadStatusFilter,
+    markAsRead,
+    setLoading,
+    setError
+  } = useFeed();
   const [showAddFeedForm, setShowAddFeedForm] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -46,8 +59,8 @@ function RSSReaderContent() {
 
   // 获取筛选后的文章
   const filteredFeeds = useMemo(() => {
-    return filterFeeds(state.feeds, state.filters);
-  }, [state.feeds, state.filters]);
+    return filterFeeds(state.feeds, state.filters, state.readFeedLinks);
+  }, [state.feeds, state.filters, state.readFeedLinks]);
 
   // 获取分组后的文章
   const groupedFeeds = useMemo(() => {
@@ -67,17 +80,27 @@ function RSSReaderContent() {
   const hasPrevious = currentFeedIndex > 0;
   const hasNext = currentFeedIndex >= 0 && currentFeedIndex < filteredFeeds.length - 1;
 
+  // 选择文章并标记为已读
+  const handleSelectFeed = (feed: any) => {
+    setSelectedFeed(feed);
+    markAsRead(feed.link);
+  };
+
   // 导航到上一篇
   const handlePrevious = () => {
     if (hasPrevious) {
-      setSelectedFeed(filteredFeeds[currentFeedIndex - 1]);
+      const prevFeed = filteredFeeds[currentFeedIndex - 1];
+      setSelectedFeed(prevFeed);
+      markAsRead(prevFeed.link);
     }
   };
 
   // 导航到下一篇
   const handleNext = () => {
     if (hasNext) {
-      setSelectedFeed(filteredFeeds[currentFeedIndex + 1]);
+      const nextFeed = filteredFeeds[currentFeedIndex + 1];
+      setSelectedFeed(nextFeed);
+      markAsRead(nextFeed.link);
     }
   };
 
@@ -135,7 +158,17 @@ function RSSReaderContent() {
                 
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">筛选</h3>
-                   <div className="flex flex-col gap-4">
+                  
+                  {/* 已读状态筛选 */}
+                  <div>
+                    <ReadStatusSelector
+                      readStatus={state.filters.readStatus || 'all'}
+                      onReadStatusChange={setReadStatusFilter}
+                      vertical
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-4">
                     {/* 分类筛选 */}
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="category" className="text-sm text-gray-700 dark:text-gray-300 font-medium">
@@ -188,9 +221,11 @@ function RSSReaderContent() {
                 sources={sources}
                 selectedCategory={state.filters.category}
                 selectedSource={state.filters.source}
+                selectedReadStatus={state.filters.readStatus}
                 groupBy={state.groupBy}
                 onCategoryChange={setCategoryFilter}
                 onSourceChange={setSourceFilter}
+                onReadStatusChange={setReadStatusFilter}
                 onGroupByChange={setGroupBy}
               />
               {/* 文章列表 */}
@@ -199,8 +234,9 @@ function RSSReaderContent() {
                   feeds={filteredFeeds}
                   groupedFeeds={groupedFeeds}
                   selectedFeedId={state.selectedFeed?.id}
-                  onSelectFeed={setSelectedFeed}
+                  onSelectFeed={handleSelectFeed}
                   isGrouped={state.groupBy !== 'none'}
+                  readFeedLinks={state.readFeedLinks}
                 />
               </div>
             </div>

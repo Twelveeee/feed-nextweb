@@ -13,6 +13,7 @@ interface FeedListProps {
   selectedFeedId?: string;
   onSelectFeed: (feed: FlatFeed) => void;
   isGrouped?: boolean;
+  readFeedLinks?: Set<string>;
 }
 
 export default function FeedList({
@@ -21,6 +22,7 @@ export default function FeedList({
   selectedFeedId,
   onSelectFeed,
   isGrouped = false,
+  readFeedLinks = new Set(),
 }: FeedListProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
@@ -90,6 +92,7 @@ export default function FeedList({
                   key={feed.id}
                   feed={feed}
                   isSelected={feed.id === selectedFeedId}
+                  isRead={readFeedLinks.has(feed.link)}
                   onClick={() => onSelectFeed(feed)}
                 />
               ))}
@@ -108,6 +111,7 @@ export default function FeedList({
           key={feed.id}
           feed={feed}
           isSelected={feed.id === selectedFeedId}
+          isRead={readFeedLinks.has(feed.link)}
           onClick={() => onSelectFeed(feed)}
         />
       ))}

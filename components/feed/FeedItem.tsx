@@ -14,10 +14,11 @@ dayjs.locale('zh-cn');
 interface FeedItemProps {
   feed: FlatFeed;
   isSelected?: boolean;
+  isRead?: boolean;
   onClick: () => void;
 }
 
-export default function FeedItem({ feed, isSelected = false, onClick }: FeedItemProps) {
+export default function FeedItem({ feed, isSelected = false, isRead = false, onClick }: FeedItemProps) {
   return (
     <article
       onClick={onClick}
@@ -25,12 +26,18 @@ export default function FeedItem({ feed, isSelected = false, onClick }: FeedItem
         p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer transition-colors
         hover:bg-gray-50 dark:hover:bg-gray-800
         ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-600' : ''}
+        ${isRead ? 'opacity-60' : ''}
       `}
     >
       {/* 标题 */}
-      <h3 className={`text-base font-semibold mb-2 line-clamp-2 ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
-        {feed.title}
-      </h3>
+      <div className="flex items-start gap-2 mb-2">
+        {!isRead && (
+          <span className="flex-shrink-0 w-2 h-2 mt-2 bg-blue-600 rounded-full" title="未读"></span>
+        )}
+        <h3 className={`flex-1 text-base font-semibold line-clamp-2 ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
+          {feed.title}
+        </h3>
+      </div>
 
       {/* 摘要 */}
       {feed.summary && (

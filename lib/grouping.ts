@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { FlatFeed, GroupedFeeds, GroupByType } from '@/types';
+import { FlatFeed, GroupedFeeds, GroupByType, ReadStatusFilter } from '@/types';
 
 /**
  * 按指定类型对文章进行分组
@@ -61,7 +61,9 @@ export function filterFeeds(
     category?: string;
     source?: string;
     searchQuery?: string;
-  }
+    readStatus?: ReadStatusFilter;
+  },
+  readFeedLinks?: Set<string>
 ): FlatFeed[] {
   return feeds.filter(feed => {
     // 分类过滤
@@ -82,6 +84,17 @@ export function filterFeeds(
       const matchSummary = feed.summary?.toLowerCase().includes(query);
       
       if (!matchTitle && !matchContent && !matchSummary) {
+        return false;
+      }
+    }
+
+    // 已读状态过滤
+    if (filters.readStatus && filters.readStatus !== 'all' && readFeedLinks) {
+      const isRead = readFeedLinks.has(feed.link);
+      if (filters.readStatus === 'read' && !isRead) {
+        return false;
+      }
+      if (filters.readStatus === 'unread' && isRead) {
         return false;
       }
     }

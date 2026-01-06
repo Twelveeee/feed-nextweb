@@ -2,7 +2,8 @@
 
 import SearchBox from './SearchBox';
 import GroupSelector from './GroupSelector';
-import { GroupByType } from '@/types';
+import ReadStatusSelector from './ReadStatusSelector';
+import { GroupByType, ReadStatusFilter } from '@/types';
 
 /**
  * 筛选栏组件
@@ -12,9 +13,11 @@ interface FilterBarProps {
   sources: string[];
   selectedCategory?: string;
   selectedSource?: string;
+  selectedReadStatus?: ReadStatusFilter;
   groupBy: GroupByType;
   onCategoryChange: (category: string | undefined) => void;
   onSourceChange: (source: string | undefined) => void;
+  onReadStatusChange: (status: ReadStatusFilter | undefined) => void;
   onGroupByChange: (groupBy: GroupByType) => void;
   onSearch: (query: string) => void;
 }
@@ -24,9 +27,11 @@ export default function FilterBar({
   sources,
   selectedCategory,
   selectedSource,
+  selectedReadStatus = 'all',
   groupBy,
   onCategoryChange,
   onSourceChange,
+  onReadStatusChange,
   onGroupByChange,
   onSearch,
 }: FilterBarProps) {
@@ -75,6 +80,14 @@ export default function FilterBar({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* 已读状态筛选 */}
+        <div>
+          <ReadStatusSelector
+            readStatus={selectedReadStatus}
+            onReadStatusChange={onReadStatusChange}
+          />
         </div>
 
         {/* 分组选择器 */}

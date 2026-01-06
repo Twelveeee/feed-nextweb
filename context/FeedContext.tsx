@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useReducer, ReactNode, useCallback } from 'react';
-import { FlatFeed, GroupByType } from '@/types';
+import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect } from 'react';
+import { FlatFeed, GroupByType, ReadStatusFilter } from '@/types';
+import { markAsRead as markFeedAsRead, getReadFeedLinks } from '@/lib/read-status';
 
 /**
  * Feed 状态类型
@@ -14,9 +15,11 @@ interface FeedState {
     category?: string;
     source?: string;
     searchQuery?: string;
+    readStatus?: ReadStatusFilter;
   };
   loading: boolean;
   error: string | null;
+  readFeedLinks: Set<string>; // 已读文章链接集合
 }
 
 /**
@@ -29,8 +32,11 @@ type FeedAction =
   | { type: 'SET_CATEGORY_FILTER'; payload: string | undefined }
   | { type: 'SET_SOURCE_FILTER'; payload: string | undefined }
   | { type: 'SET_SEARCH_QUERY'; payload: string }
+  | { type: 'SET_READ_STATUS_FILTER'; payload: ReadStatusFilter | undefined }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'MARK_AS_READ'; payload: string }
+  | { type: 'REFRESH_READ_STATUS' }
   | { type: 'RESET_FILTERS' };
 
 /**
@@ -40,9 +46,10 @@ const initialState: FeedState = {
   feeds: [],
   selectedFeed: null,
   groupBy: 'none',
-  filters: {},
+  filters: { readStatus: 'all' },
   loading: false,
   error: null,
+  readFeedLinks: new Set(),
 };
 
 /**
@@ -71,12 +78,28 @@ function feedReducer(state: FeedState, action: FeedAction): FeedState {
         ...state,
         filters: { ...state.filters, searchQuery: action.payload },
       };
+    case 'SET_READ_STATUS_FILTER':
+      return {
+        ...state,
+        filters: { ...state.filters, readStatus: action.payload || 'all' },
+      };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload, loading: false };
+    case 'MARK_AS_READ':
+      markFeedAsRead(action.payload);
+      return {
+        ...state,
+        readFeedLinks: new Set([...state.readFeedLinks, action.payload]),
+      };
+    case 'REFRESH_READ_STATUS':
+      return {
+        ...state,
+        readFeedLinks: getReadFeedLinks(),
+      };
     case 'RESET_FILTERS':
-      return { ...state, filters: {}, groupBy: 'none' };
+      return { ...state, filters: { readStatus: 'all' }, groupBy: 'none' };
     default:
       return state;
   }
@@ -93,6 +116,9 @@ interface FeedContextType {
   setCategoryFilter: (category: string | undefined) => void;
   setSourceFilter: (source: string | undefined) => void;
   setSearchQuery: (query: string) => void;
+  setReadStatusFilter: (status: ReadStatusFilter | undefined) => void;
+  markAsRead: (link: string) => void;
+  refreshReadStatus: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   resetFilters: () => void;
@@ -108,6 +134,11 @@ const FeedContext = createContext<FeedContextType | undefined>(undefined);
  */
 export function FeedProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(feedReducer, initialState);
+
+  // 初始化时加载已读状态
+  useEffect(() => {
+    dispatch({ type: 'REFRESH_READ_STATUS' });
+  }, []);
 
   const setFeeds = useCallback((feeds: FlatFeed[]) => {
     dispatch({ type: 'SET_FEEDS', payload: feeds });
@@ -133,6 +164,18 @@ export function FeedProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_SEARCH_QUERY', payload: query });
   }, []);
 
+  const setReadStatusFilter = useCallback((status: ReadStatusFilter | undefined) => {
+    dispatch({ type: 'SET_READ_STATUS_FILTER', payload: status });
+  }, []);
+
+  const markAsRead = useCallback((link: string) => {
+    dispatch({ type: 'MARK_AS_READ', payload: link });
+  }, []);
+
+  const refreshReadStatus = useCallback(() => {
+    dispatch({ type: 'REFRESH_READ_STATUS' });
+  }, []);
+
   const setLoading = useCallback((loading: boolean) => {
     dispatch({ type: 'SET_LOADING', payload: loading });
   }, []);
@@ -153,6 +196,9 @@ export function FeedProvider({ children }: { children: ReactNode }) {
     setCategoryFilter,
     setSourceFilter,
     setSearchQuery,
+    setReadStatusFilter,
+    markAsRead,
+    refreshReadStatus,
     setLoading,
     setError,
     resetFilters,

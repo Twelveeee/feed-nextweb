@@ -24,21 +24,22 @@ export interface FeedLabels {
 
 /**
  * 前端扁平化的 Feed 数据结构
- */
-export interface FlatFeed {
-  id: string; // 使用 link 作为唯一标识
-  title: string;
-  link: string;
-  source: string;
-  category?: string;
-  content?: string;
-  summary?: string;
-  summaryHtml?: string;
-  tags?: string[];
-  pubTime: Date;
-  fetchTime: Date;
-  type: string;
-}
+  */
+ export interface FlatFeed {
+   id: string; // 使用 link 作为唯一标识
+   title: string;
+   link: string;
+   source: string;
+   category?: string;
+   content?: string;
+   summary?: string;
+   summaryHtml?: string;
+   tags?: string[];
+   pubTime: Date;
+   fetchTime: Date;
+   type: string;
+   isRead?: boolean; // 已读状态（前端计算）
+ }
 
 /**
  * RSS 订阅源类型定义
@@ -105,3 +106,8 @@ export type GroupByType = 'none' | 'category' | 'source' | 'hour';
 export interface GroupedFeeds {
   [key: string]: FlatFeed[];
 }
+
+/**
+ * 已读状态筛选类型
+ */
+export type ReadStatusFilter = 'all' | 'read' | 'unread';

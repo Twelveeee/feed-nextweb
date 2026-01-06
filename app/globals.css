@@ -224,3 +224,55 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 .article-content em {
   @apply italic;
 }
+
+/*
+ * AI 生成内容的暗色模式适配
+ * 在暗色模式下，使用 !important 强制覆盖内联样式，以适配系统主题
+ * 邮件客户端会忽略这些类，继续使用内联样式（浅色）
+ */
+html.dark .ai-quote {
+  background: var(--card-hover-bg) !important;
+  border-left-color: #3b82f6 !important;
+  box-shadow: none !important;
+}
+html.dark .ai-quote p {
+  color: var(--foreground) !important;
+}
+
+html.dark .ai-card {
+  background-color: var(--card-bg) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--border-color) !important;
+}
+html.dark .ai-card p {
+  color: var(--foreground) !important;
+}
+html.dark .ai-card p:last-child {
+  color: #60a5fa !important; /* 蓝色高亮在暗色下调整为更亮的蓝 */
+}
+
+html.dark .ai-list-item {
+  color: var(--foreground) !important;
+}
+/* 圆圈数字保持原样或微调 */
+html.dark .ai-list-num {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+html.dark .ai-highlight {
+  background: linear-gradient(180deg, rgba(255,255,255,0) 50%, rgba(59,130,246,0.3) 50%) !important;
+  color: inherit !important;
+}
+
+html.dark .ai-table-wrap {
+  background-color: var(--card-hover-bg) !important;
+}
+html.dark .ai-table-th {
+  border-bottom-color: var(--border-color) !important;
+  color: var(--foreground) !important;
+}
+html.dark .ai-table-td {
+  border-bottom-color: var(--border-color) !important;
+  color: var(--foreground) !important;
+}

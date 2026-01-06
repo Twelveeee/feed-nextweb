@@ -3,6 +3,7 @@
 import { FlatFeed } from '@/types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
+import { useEffect, useState } from 'react';
 
 dayjs.locale('zh-cn');
 
@@ -12,9 +13,61 @@ dayjs.locale('zh-cn');
 interface FeedDetailProps {
   feed: FlatFeed | null;
   onBack?: () => void; // 移动端返回按钮
+  onPrevious?: () => void; // 上一篇
+  onNext?: () => void; // 下一篇
+  hasPrevious?: boolean; // 是否有上一篇
+  hasNext?: boolean; // 是否有下一篇
 }
 
-export default function FeedDetail({ feed, onBack }: FeedDetailProps) {
+export default function FeedDetail({ feed, onBack, onPrevious, onNext, hasPrevious, hasNext }: FeedDetailProps) {
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // 最小滑动距离（像素）
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isUpSwipe = distance > minSwipeDistance;
+    const isDownSwipe = distance < -minSwipeDistance;
+    
+    if (isUpSwipe && hasNext && onNext) {
+      onNext();
+    }
+    if (isDownSwipe && hasPrevious && onPrevious) {
+      onPrevious();
+    }
+  };
+
+  // 键盘快捷键支持（PC端）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 上箭头或 K 键 - 上一篇
+      if ((e.key === 'ArrowUp' || e.key === 'k') && hasPrevious && onPrevious) {
+        e.preventDefault();
+        onPrevious();
+      }
+      // 下箭头或 J 键 - 下一篇
+      if ((e.key === 'ArrowDown' || e.key === 'j') && hasNext && onNext) {
+        e.preventDefault();
+        onNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasPrevious, hasNext, onPrevious, onNext]);
   // 未选中文章时的占位符
   if (!feed) {
     return (
@@ -41,19 +94,25 @@ export default function FeedDetail({ feed, onBack }: FeedDetailProps) {
   }
 
   return (
-    <article className="max-w-4xl mx-auto p-6 lg:p-8">
-      {/* 移动端返回按钮 */}
-      {onBack && (
-        <button
-          onClick={onBack}
-          className="lg:hidden flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-4 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="text-sm font-medium">返回列表</span>
-        </button>
-      )}
+    <div
+      className="relative h-full overflow-y-auto"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      <article className="max-w-4xl mx-auto p-6 lg:p-8">
+        {/* 移动端返回按钮 */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="lg:hidden flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-4 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="text-sm font-medium">返回列表</span>
+          </button>
+        )}
 
       {/* 文章标题 */}
       <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
@@ -155,6 +214,7 @@ export default function FeedDetail({ feed, onBack }: FeedDetailProps) {
           <div className="text-gray-500 dark:text-gray-400 italic">暂无内容</div>
         )}
       </div>
-    </article>
+      </article>
+    </div>
   );
 }

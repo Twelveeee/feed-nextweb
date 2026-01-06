@@ -58,6 +58,29 @@ function RSSReaderContent() {
   const categories = useMemo(() => getUniqueCategories(state.feeds), [state.feeds]);
   const sources = useMemo(() => getUniqueSources(state.feeds), [state.feeds]);
 
+  // 获取当前文章的索引和导航信息
+  const currentFeedIndex = useMemo(() => {
+    if (!state.selectedFeed) return -1;
+    return filteredFeeds.findIndex(feed => feed.id === state.selectedFeed?.id);
+  }, [filteredFeeds, state.selectedFeed]);
+
+  const hasPrevious = currentFeedIndex > 0;
+  const hasNext = currentFeedIndex >= 0 && currentFeedIndex < filteredFeeds.length - 1;
+
+  // 导航到上一篇
+  const handlePrevious = () => {
+    if (hasPrevious) {
+      setSelectedFeed(filteredFeeds[currentFeedIndex - 1]);
+    }
+  };
+
+  // 导航到下一篇
+  const handleNext = () => {
+    if (hasNext) {
+      setSelectedFeed(filteredFeeds[currentFeedIndex + 1]);
+    }
+  };
+
   // 处理添加订阅成功
   const handleAddFeedSuccess = () => {
     setShowAddFeedForm(false);
@@ -186,6 +209,10 @@ function RSSReaderContent() {
             <FeedDetail
               feed={state.selectedFeed}
               onBack={() => setSelectedFeed(null)}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              hasPrevious={hasPrevious}
+              hasNext={hasNext}
             />
           }
         />

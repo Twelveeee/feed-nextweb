@@ -1,0 +1,49 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "regions": ["hkg1"],
+  "env": {
+    "API_BASE_URL": {
+      "description": "后端 API 真实地址（必填）",
+      "value": ""
+    },
+    "API_BASIC_AUTH_USER": {
+      "description": "后端 Basic Auth 用户名（可选）",
+      "value": ""
+    },
+    "API_BASIC_AUTH_PASS": {
+      "description": "后端 Basic Auth 密码（可选）",
+      "value": ""
+    },
+    "NEXT_PUBLIC_GA_ID": {
+      "description": "Google Analytics 4 ID（可选，格式：G-XXXXXXXXXX）",
+      "value": ""
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}

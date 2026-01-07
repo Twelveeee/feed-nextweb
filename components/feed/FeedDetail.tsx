@@ -3,7 +3,7 @@
 import { FlatFeed } from '@/types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 dayjs.locale('zh-cn');
 
@@ -20,35 +20,103 @@ interface FeedDetailProps {
 }
 
 export default function FeedDetail({ feed, onBack, onPrevious, onNext, hasPrevious, hasNext }: FeedDetailProps) {
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number>(0);
+  const touchStartTime = useRef<number>(0);
+  const isAtBottomRef = useRef<boolean>(false);
 
   // 最小滑动距离（像素）
   const minSwipeDistance = 50;
+  // 最大滑动时间（毫秒）- 防止慢速滑动触发
+  const maxSwipeTime = 500;
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientY);
-  };
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientY);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isUpSwipe = distance > minSwipeDistance;
-    const isDownSwipe = distance < -minSwipeDistance;
-    
-    if (isUpSwipe && hasNext && onNext) {
-      onNext();
+  // 监听 feed 变化，重置滚动位置
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
     }
-    if (isDownSwipe && hasPrevious && onPrevious) {
-      onPrevious();
+  }, [feed?.id]);
+
+  // 检查是否在底部
+  const checkIfAtBottom = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return false;
+    
+    const scrollTop = Math.ceil(container.scrollTop);
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    
+    // 允许50px的误差范围，适应移动端浏览器可能的底部遮挡或弹性滚动
+    return scrollHeight - scrollTop - clientHeight <= 50;
+  }, []);
+
+  // 监听滚动，实时更新底部状态
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      isAtBottomRef.current = checkIfAtBottom();
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    // 初始检查
+    handleScroll();
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [checkIfAtBottom]);
+
+  const onTouchStart = useCallback((e: TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchStartTime.current = Date.now();
+  }, []);
+
+  const onTouchEnd = useCallback((e: TouchEvent) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const touchEndTime = Date.now();
+    
+    const distance = touchStartY.current - touchEndY;
+    const duration = touchEndTime - touchStartTime.current;
+    
+    // 向上滑动（distance > 0）且距离足够且时间合理
+    const isValidSwipe = distance > minSwipeDistance && duration < maxSwipeTime;
+    
+    // 重新检查是否在底部（以防触摸过程中状态未更新）
+    const isAtBottom = checkIfAtBottom();
+
+    // 只有在底部且有效滑动时才切换
+    if (isValidSwipe && isAtBottom && hasNext && onNext) {
+      console.log('触发下一篇切换', { distance, duration, isAtBottom });
+      
+      // 触发切换动画
+      setIsAnimating(true);
+      
+      // 动画结束后执行切换
+      setTimeout(() => {
+        onNext();
+        // 稍微延迟重置动画状态，配合新内容淡入
+        setTimeout(() => setIsAnimating(false), 50);
+      }, 100); // 100ms 对应 CSS transition 时间
     }
-  };
+  }, [hasNext, onNext, minSwipeDistance, maxSwipeTime, checkIfAtBottom]);
+
+  // 使用原生事件监听，避免React合成事件的问题
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [onTouchStart, onTouchEnd]);
 
   // 键盘快捷键支持（PC端）
   useEffect(() => {
@@ -95,12 +163,16 @@ export default function FeedDetail({ feed, onBack, onPrevious, onNext, hasPrevio
 
   return (
     <div
-      className="relative h-full overflow-y-auto"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      ref={containerRef}
+      className="relative h-full overflow-y-auto overflow-x-hidden"
     >
-      <article className="max-w-4xl mx-auto p-6 lg:p-8">
+      <article
+        className={`
+          max-w-4xl mx-auto p-6 lg:p-8
+          transform transition-all duration-200 ease-out
+          ${isAnimating ? '-translate-y-10 opacity-0' : 'translate-y-0 opacity-100'}
+        `}
+      >
         {/* 移动端返回按钮 */}
         {onBack && (
           <button

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { FeedProvider, useFeed } from '@/context/FeedContext';
 import { getRecentFeeds } from '@/lib/api-client';
 import { filterFeeds, groupFeeds, getUniqueCategories, getUniqueSources } from '@/lib/grouping';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
 import Header from '@/components/layout/Header';
 import MainLayout from '@/components/layout/MainLayout';
 import FilterBar from '@/components/filter/FilterBar';
@@ -19,43 +20,45 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
 /**
  * RSS 阅读器主页面组件
  */
-function RSSReaderContent() {
-  const {
-    state,
-    setFeeds,
-    setSelectedFeed,
-    setGroupBy,
-    setCategoryFilter,
-    setSourceFilter,
-    setSearchQuery,
-    setReadStatusFilter,
-    markAsRead,
-    setLoading,
-    setError
-  } = useFeed();
-  const [showAddFeedForm, setShowAddFeedForm] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-  // 加载文章数据
-  useEffect(() => {
-    const loadFeeds = async () => {
-      setLoading(true);
-      try {
-        const feeds = await getRecentFeeds(7, 100);
-        setFeeds(feeds);
-        // 自动选中第一篇文章
-        if (feeds.length > 0) {
-          setSelectedFeed(feeds[0]);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '加载文章失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadFeeds();
-  }, [setFeeds, setSelectedFeed, setLoading, setError]);
+ function RSSReaderContent() {
+   const {
+     state,
+     setFeeds,
+     setSelectedFeed,
+     setGroupBy,
+     setCategoryFilter,
+     setSourceFilter,
+     setSearchQuery,
+     setReadStatusFilter,
+     markAsRead,
+     setLoading,
+     setError
+   } = useFeed();
+   const [showAddFeedForm, setShowAddFeedForm] = useState(false);
+   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+   const isDesktop = useIsDesktop();
+   const feedListScrollRef = useRef<HTMLDivElement>(null);
+ 
+   // 加载文章数据
+   useEffect(() => {
+     const loadFeeds = async () => {
+       setLoading(true);
+       try {
+         const feeds = await getRecentFeeds(7, 100);
+         setFeeds(feeds);
+         // 桌面端自动选中第一篇文章，移动端不选中
+         if (feeds.length > 0 && isDesktop) {
+           setSelectedFeed(feeds[0]);
+         }
+       } catch (err) {
+         setError(err instanceof Error ? err.message : '加载文章失败');
+       } finally {
+         setLoading(false);
+       }
+     };
+ 
+     loadFeeds();
+   }, [setFeeds, setSelectedFeed, setLoading, setError, isDesktop]);
 
   // 获取筛选后的文章
   const filteredFeeds = useMemo(() => {
@@ -126,7 +129,8 @@ function RSSReaderContent() {
     try {
       const feeds = await getRecentFeeds(7, 100);
       setFeeds(feeds);
-      if (feeds.length > 0) {
+      // 桌面端自动选中第一篇文章，移动端不选中
+      if (feeds.length > 0 && isDesktop) {
         setSelectedFeed(feeds[0]);
       }
     } catch (err) {
@@ -227,9 +231,13 @@ function RSSReaderContent() {
                 onSourceChange={setSourceFilter}
                 onReadStatusChange={setReadStatusFilter}
                 onGroupByChange={setGroupBy}
+                scrollContainerRef={feedListScrollRef}
               />
               {/* 文章列表 */}
-              <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
+              <div
+                ref={feedListScrollRef}
+                className="flex-1 overflow-y-auto bg-white dark:bg-gray-900"
+              >
                 <FeedList
                   feeds={filteredFeeds}
                   groupedFeeds={groupedFeeds}

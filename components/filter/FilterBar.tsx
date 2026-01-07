@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import SearchBox from './SearchBox';
 import GroupSelector from './GroupSelector';
 import ReadStatusSelector from './ReadStatusSelector';
@@ -20,6 +22,7 @@ interface FilterBarProps {
   onReadStatusChange: (status: ReadStatusFilter | undefined) => void;
   onGroupByChange: (groupBy: GroupByType) => void;
   onSearch: (query: string) => void;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>; // 滚动容器引用
 }
 
 export default function FilterBar({
@@ -34,9 +37,87 @@ export default function FilterBar({
   onReadStatusChange,
   onGroupByChange,
   onSearch,
+  scrollContainerRef,
 }: FilterBarProps) {
+  const [isVisible, setIsVisible] = useState(true);
+  const [filterHeight, setFilterHeight] = useState(0);
+  const lastScrollY = useRef(0);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+
+  // 监听高度变化
+  useEffect(() => {
+    if (!filterRef.current) return;
+    
+    const updateHeight = () => {
+      if (filterRef.current) {
+        setFilterHeight(filterRef.current.offsetHeight);
+      }
+    };
+
+    // 初始测量
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(filterRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // 监听滚动事件，控制过滤栏显示/隐藏（仅移动端）
+  useEffect(() => {
+    if (!scrollContainerRef?.current || !isMobile) {
+      setIsVisible(true);
+      return;
+    }
+
+    const handleScroll = () => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const currentScrollY = container.scrollTop;
+      const scrollDelta = currentScrollY - lastScrollY.current;
+      
+      // 避免由于弹性滚动导致的负值或超大值影响判断
+      if (currentScrollY < 0) return;
+
+      // 阈值优化：更灵敏的响应
+      // 向下滚动时隐藏 (增加阈值避免微小抖动)
+      if (scrollDelta > 5 && currentScrollY > 50 && isVisible) {
+        setIsVisible(false);
+      }
+      // 向上滚动时显示
+      else if (scrollDelta < -5 && !isVisible) {
+        setIsVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    const container = scrollContainerRef.current;
+    container.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [scrollContainerRef, isVisible, isMobile]);
+
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 space-y-4">
+    <div
+      ref={filterRef}
+      className={`
+        bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700
+        lg:!mt-0 lg:!opacity-100 lg:!pointer-events-auto
+        transition-all duration-300 ease-in-out
+        overflow-hidden
+        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}
+      `}
+      style={{
+        // 移动端隐藏时使用负 margin 将其收起
+        marginTop: (isMobile && !isVisible) ? `-${filterHeight}px` : 0,
+        // 保持内边距
+        padding: '1rem',
+      }}
+    >
       {/* 搜索框 - PC和移动端都显示 */}
       <SearchBox onSearch={onSearch} />
 

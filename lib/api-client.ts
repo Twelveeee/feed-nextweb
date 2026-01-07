@@ -24,7 +24,26 @@ export async function queryFeeds(params: QueryFeedsRequest): Promise<FlatFeed[]>
   }
 
   const data: QueryFeedsResponse = await response.json();
-  return adaptFeeds(data.feeds);
+  const feeds = adaptFeeds(data.feeds);
+  
+  const uniqueFeedsMap = new Map<string, FlatFeed>();
+  
+  for (const feed of feeds) {
+    const existing = uniqueFeedsMap.get(feed.id);
+    if (!existing) {
+      uniqueFeedsMap.set(feed.id, feed);
+    } else {
+      // 如果已存在，比较发布时间，保留较新的
+      if (new Date(feed.pubTime) > new Date(existing.pubTime)) {
+        uniqueFeedsMap.set(feed.id, feed);
+      }
+    }
+  }
+
+  // 将 Map 转回数组，并按时间倒序排序
+  return Array.from(uniqueFeedsMap.values()).sort((a, b) =>
+    new Date(b.pubTime).getTime() - new Date(a.pubTime).getTime()
+  );
 }
 
 /**
@@ -48,7 +67,7 @@ export async function addFeedSource(params: AddFeedSourceRequest): Promise<void>
 /**
  * 获取最近N天的文章
  */
-export async function getRecentFeeds(days: number = 1, limit: number = 100): Promise<FlatFeed[]> {
+export async function getRecentFeeds(days: number = 1, limit: number = 500): Promise<FlatFeed[]> {
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - days);

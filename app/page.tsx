@@ -44,7 +44,7 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
      const loadFeeds = async () => {
        setLoading(true);
        try {
-         const feeds = await getRecentFeeds(7, 100);
+         const feeds = await getRecentFeeds(7, 500);
          setFeeds(feeds);
          // 桌面端自动选中第一篇文章，移动端不选中
          if (feeds.length > 0 && isDesktop) {
@@ -114,7 +114,7 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
     // 重新加载文章
     setTimeout(async () => {
       try {
-        const feeds = await getRecentFeeds(7, 100);
+        const feeds = await getRecentFeeds(7, 500);
         setFeeds(feeds);
       } catch (err) {
         console.error('重新加载文章失败:', err);
@@ -127,7 +127,7 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
     setLoading(true);
     setError(null);
     try {
-      const feeds = await getRecentFeeds(7, 100);
+      const feeds = await getRecentFeeds(7, 500);
       setFeeds(feeds);
       // 桌面端自动选中第一篇文章，移动端不选中
       if (feeds.length > 0 && isDesktop) {

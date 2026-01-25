@@ -253,20 +253,6 @@ export default function FeedDetail({ feed, onBack, onPrevious, onNext, hasPrevio
         </a>
       </div>
 
-      {/* 标签 */}
-      {feed.tags && feed.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {feed.tags.map((tag, index) => (
-            <span
-              key={index}
-              className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm rounded-full"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* 文章内容 */}
       <div className="prose prose-gray dark:prose-invert max-w-none">
         {/* 如果有 HTML 摘要，显示 HTML */}
@@ -275,9 +261,6 @@ export default function FeedDetail({ feed, onBack, onPrevious, onNext, hasPrevio
             className="article-content"
             dangerouslySetInnerHTML={{ __html: feed.summaryHtml }}
           />
-        ) : feed.content ? (
-          // 如果有纯文本内容，显示纯文本
-          <div className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">{feed.content}</div>
         ) : feed.summary ? (
           // 如果只有摘要，显示摘要
           <div className="text-gray-700 dark:text-gray-300">{feed.summary}</div>

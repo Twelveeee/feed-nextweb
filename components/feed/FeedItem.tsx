@@ -89,25 +89,6 @@ export default function FeedItem({ feed, isSelected = false, isRead = false, onC
           {dayjs(feed.pubTime).fromNow()}
         </span>
       </div>
-
-      {/* 标签 */}
-      {feed.tags && feed.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {feed.tags.slice(0, 3).map((tag, index) => (
-            <span
-              key={index}
-              className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded"
-            >
-              {tag}
-            </span>
-          ))}
-          {feed.tags.length > 3 && (
-            <span className="px-2 py-0.5 text-gray-500 dark:text-gray-400 text-xs">
-              +{feed.tags.length - 3}
-            </span>
-          )}
-        </div>
-      )}
     </article>
   );
 }

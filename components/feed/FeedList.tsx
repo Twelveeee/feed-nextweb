@@ -10,7 +10,7 @@ import FeedItem from './FeedItem';
 interface FeedListProps {
   feeds: FlatFeed[];
   groupedFeeds?: GroupedFeeds;
-  selectedFeedId?: string;
+  selectedFeedId?: number;
   onSelectFeed: (feed: FlatFeed) => void;
   isGrouped?: boolean;
   readFeedLinks?: Set<string>;

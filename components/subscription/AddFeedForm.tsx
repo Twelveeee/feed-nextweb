@@ -14,12 +14,10 @@ interface AddFeedFormProps {
 export default function AddFeedForm({ onSuccess, onCancel }: AddFeedFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    rssUrl: '',
-    rsshubPath: '',
+    url: '',
     category: '',
-    interval: '1h',
+    enabled: true,
   });
-  const [useRssHub, setUseRssHub] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,13 +31,8 @@ export default function AddFeedForm({ onSuccess, onCancel }: AddFeedFormProps) {
       return;
     }
 
-    if (!useRssHub && !formData.rssUrl.trim()) {
+    if (!formData.url.trim()) {
       setError('请输入 RSS URL');
-      return;
-    }
-
-    if (useRssHub && !formData.rsshubPath.trim()) {
-      setError('请输入 RSSHub 路径');
       return;
     }
 
@@ -47,25 +40,18 @@ export default function AddFeedForm({ onSuccess, onCancel }: AddFeedFormProps) {
 
     try {
       await addFeedSource({
-        source: {
-          name: formData.name.trim(),
-          rss: useRssHub
-            ? { rsshub_route_path: formData.rsshubPath.trim() }
-            : { url: formData.rssUrl.trim() },
-          interval: formData.interval,
-          labels: formData.category.trim()
-            ? { category: formData.category.trim() }
-            : undefined,
-        },
+        name: formData.name.trim(),
+        url: formData.url.trim(),
+        category: formData.category.trim() || undefined,
+        enabled: formData.enabled,
       });
 
       // 重置表单
       setFormData({
         name: '',
-        rssUrl: '',
-        rsshubPath: '',
+        url: '',
         category: '',
-        interval: '1h',
+        enabled: true,
       });
 
       onSuccess?.();
@@ -119,65 +105,21 @@ export default function AddFeedForm({ onSuccess, onCancel }: AddFeedFormProps) {
             />
           </div>
 
-          {/* RSS 类型切换 */}
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={!useRssHub}
-                onChange={() => setUseRssHub(false)}
-                className="w-4 h-4 text-blue-600"
-                disabled={isSubmitting}
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">RSS URL</span>
+          {/* RSS URL */}
+          <div>
+            <label htmlFor="url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              RSS URL <span className="text-red-500">*</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={useRssHub}
-                onChange={() => setUseRssHub(true)}
-                className="w-4 h-4 text-blue-600"
-                disabled={isSubmitting}
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">RSSHub 路径</span>
-            </label>
+            <input
+              type="url"
+              id="url"
+              value={formData.url}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="https://example.com/feed.xml"
+              disabled={isSubmitting}
+            />
           </div>
-
-          {/* RSS URL 或 RSSHub 路径 */}
-          {!useRssHub ? (
-            <div>
-              <label htmlFor="rssUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                RSS URL <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="url"
-                id="rssUrl"
-                value={formData.rssUrl}
-                onChange={(e) => setFormData({ ...formData, rssUrl: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://example.com/feed.xml"
-                disabled={isSubmitting}
-              />
-            </div>
-          ) : (
-            <div>
-              <label htmlFor="rsshubPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                RSSHub 路径 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="rsshubPath"
-                value={formData.rsshubPath}
-                onChange={(e) => setFormData({ ...formData, rsshubPath: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="/github/issue/DIYgod/RSSHub"
-                disabled={isSubmitting}
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                例如：/github/issue/DIYgod/RSSHub
-              </p>
-            </div>
-          )}
 
           {/* 分类 */}
           <div>
@@ -193,27 +135,6 @@ export default function AddFeedForm({ onSuccess, onCancel }: AddFeedFormProps) {
               placeholder="例如：技术、新闻"
               disabled={isSubmitting}
             />
-          </div>
-
-          {/* 抓取间隔 */}
-          <div>
-            <label htmlFor="interval" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              抓取间隔
-            </label>
-            <select
-              id="interval"
-              value={formData.interval}
-              onChange={(e) => setFormData({ ...formData, interval: e.target.value })}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isSubmitting}
-            >
-              <option value="30m">30 分钟</option>
-              <option value="1h">1 小时</option>
-              <option value="2h">2 小时</option>
-              <option value="6h">6 小时</option>
-              <option value="12h">12 小时</option>
-              <option value="24h">24 小时</option>
-            </select>
           </div>
 
           {/* 按钮 */}

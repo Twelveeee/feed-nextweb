@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { FeedProvider, useFeed } from '@/context/FeedContext';
 import { getRecentFeeds } from '@/lib/api-client';
 import { filterFeeds, groupFeeds, getUniqueCategories, getUniqueSources } from '@/lib/grouping';
@@ -24,6 +24,8 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
    const {
      state,
      setFeeds,
+     appendFeeds,
+     setPagination,
      setSelectedFeed,
      setGroupBy,
      setCategoryFilter,
@@ -36,19 +38,60 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
    } = useFeed();
    const [showAddFeedForm, setShowAddFeedForm] = useState(false);
    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+   const [loadingMore, setLoadingMore] = useState(false);
    const isDesktop = useIsDesktop();
    const feedListScrollRef = useRef<HTMLDivElement>(null);
- 
-   // 加载文章数据
+   const isLoadingRef = useRef(false); // 用于立即标记加载状态，避免重复请求
+
+   // 加载更多文章
+   const loadMoreFeeds = useCallback(async () => {
+     if (isLoadingRef.current || loadingMore || !state.hasMore) return;
+
+     isLoadingRef.current = true;
+     setLoadingMore(true);
+     try {
+       const result = await getRecentFeeds(20, state.nextCursor);
+       appendFeeds(result.feeds);
+       setPagination(result.hasMore, result.nextCursor);
+     } catch (err) {
+       console.error('加载更多文章失败:', err);
+       setToast({ message: '加载更多失败', type: 'error' });
+     } finally {
+       setLoadingMore(false);
+       isLoadingRef.current = false;
+     }
+   }, [loadingMore, state.hasMore, state.nextCursor, appendFeeds, setPagination]);
+
+   // 监听滚动事件，实现无限滚动
+   useEffect(() => {
+     const scrollContainer = feedListScrollRef.current;
+     if (!scrollContainer) return;
+
+     const handleScroll = () => {
+       if (loadingMore || !state.hasMore) return;
+
+       const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+       // 当滚动到距离底部 200px 时加载更多
+       if (scrollHeight - scrollTop - clientHeight < 200) {
+         loadMoreFeeds();
+       }
+     };
+
+     scrollContainer.addEventListener('scroll', handleScroll);
+     return () => scrollContainer.removeEventListener('scroll', handleScroll);
+   }, [loadingMore, state.hasMore, loadMoreFeeds]);
+
+   // 初始加载文章数据
    useEffect(() => {
      const loadFeeds = async () => {
        setLoading(true);
        try {
-         const feeds = await getRecentFeeds(7, 500);
-         setFeeds(feeds);
+         const result = await getRecentFeeds(20);
+         setFeeds(result.feeds);
+         setPagination(result.hasMore, result.nextCursor);
          // 桌面端自动选中第一篇文章，移动端不选中
-         if (feeds.length > 0 && isDesktop) {
-           setSelectedFeed(feeds[0]);
+         if (result.feeds.length > 0 && isDesktop) {
+           setSelectedFeed(result.feeds[0]);
          }
        } catch (err) {
          setError(err instanceof Error ? err.message : '加载文章失败');
@@ -56,9 +99,9 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
          setLoading(false);
        }
      };
- 
+
      loadFeeds();
-   }, [setFeeds, setSelectedFeed, setLoading, setError, isDesktop]);
+   }, [setFeeds, setPagination, setSelectedFeed, setLoading, setError, isDesktop]);
 
   // 获取筛选后的文章
   const filteredFeeds = useMemo(() => {
@@ -114,8 +157,9 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
     // 重新加载文章
     setTimeout(async () => {
       try {
-        const feeds = await getRecentFeeds(7, 500);
-        setFeeds(feeds);
+        const result = await getRecentFeeds(20);
+        setFeeds(result.feeds);
+        setPagination(result.hasMore, result.nextCursor);
       } catch (err) {
         console.error('重新加载文章失败:', err);
       }
@@ -127,11 +171,12 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
     setLoading(true);
     setError(null);
     try {
-      const feeds = await getRecentFeeds(7, 500);
-      setFeeds(feeds);
+      const result = await getRecentFeeds(20);
+      setFeeds(result.feeds);
+      setPagination(result.hasMore, result.nextCursor);
       // 桌面端自动选中第一篇文章，移动端不选中
-      if (feeds.length > 0 && isDesktop) {
-        setSelectedFeed(feeds[0]);
+      if (result.feeds.length > 0 && isDesktop) {
+        setSelectedFeed(result.feeds[0]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载文章失败');
@@ -246,6 +291,22 @@ import ReadStatusSelector from '@/components/filter/ReadStatusSelector';
                   isGrouped={state.groupBy !== 'none'}
                   readFeedLinks={state.readFeedLinks}
                 />
+                {/* 加载更多指示器 */}
+                {loadingMore && (
+                  <div className="flex items-center justify-center py-4 text-gray-500 dark:text-gray-400">
+                    <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    加载更多...
+                  </div>
+                )}
+                {/* 没有更多数据提示 */}
+                {!state.loading && !loadingMore && !state.hasMore && state.feeds.length > 0 && (
+                  <div className="flex items-center justify-center py-4 text-gray-400 dark:text-gray-500 text-sm">
+                    没有更多文章了
+                  </div>
+                )}
               </div>
             </div>
           }

@@ -5,23 +5,22 @@ import { Feed, FlatFeed } from '@/types';
  * 将后端返回的 Feed 转换为前端扁平化结构
  */
 export function adaptFeed(feed: Feed): FlatFeed {
-  const { labels, time } = feed;
-  
   return {
-    id: labels.link,
-    title: labels.title,
-    link: labels.link,
-    source: labels.source,
-    category: labels.category,
-    content: labels.content,
-    summary: labels.summary,
-    summaryHtml: labels.summary_html_snippet 
-      ? sanitizeHtml(labels.summary_html_snippet) 
+    id: feed.id,
+    sourceId: feed.source_id,
+    title: feed.generated_title || feed.title,
+    generatedTitle: feed.generated_title,
+    link: feed.link,
+    source: feed.source.source,
+    sourceName: feed.source.name,
+    category: feed.source.category,
+    score: feed.score,
+    summary: feed.summary,
+    summaryHtml: feed.summary_html
+      ? sanitizeHtml(feed.summary_html)
       : undefined,
-    tags: labels.tags ? labels.tags.split(',').map(tag => tag.trim()) : undefined,
-    pubTime: new Date(labels.pub_time),
-    fetchTime: new Date(time),
-    type: labels.type,
+    pubTime: new Date(feed.pub_time),
+    createdAt: new Date(feed.created_at),
   };
 }
 

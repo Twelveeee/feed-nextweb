@@ -20,6 +20,8 @@ interface FeedState {
   loading: boolean;
   error: string | null;
   readFeedLinks: Set<string>; // 已读文章链接集合
+  hasMore: boolean; // 是否还有更多数据
+  nextCursor?: string; // 下一页游标
 }
 
 /**
@@ -27,6 +29,8 @@ interface FeedState {
  */
 type FeedAction =
   | { type: 'SET_FEEDS'; payload: FlatFeed[] }
+  | { type: 'APPEND_FEEDS'; payload: FlatFeed[] }
+  | { type: 'SET_PAGINATION'; payload: { hasMore: boolean; nextCursor?: string } }
   | { type: 'SET_SELECTED_FEED'; payload: FlatFeed | null }
   | { type: 'SET_GROUP_BY'; payload: GroupByType }
   | { type: 'SET_CATEGORY_FILTER'; payload: string | undefined }
@@ -50,7 +54,23 @@ const initialState: FeedState = {
   loading: false,
   error: null,
   readFeedLinks: new Set(),
+  hasMore: false,
+  nextCursor: undefined,
 };
+
+/**
+ * 去重辅助函数 - 基于 link 去重
+ */
+function deduplicateFeeds(feeds: FlatFeed[]): FlatFeed[] {
+  const seen = new Set<string>();
+  return feeds.filter(feed => {
+    if (seen.has(feed.link)) {
+      return false;
+    }
+    seen.add(feed.link);
+    return true;
+  });
+}
 
 /**
  * Reducer 函数
@@ -58,7 +78,16 @@ const initialState: FeedState = {
 function feedReducer(state: FeedState, action: FeedAction): FeedState {
   switch (action.type) {
     case 'SET_FEEDS':
-      return { ...state, feeds: action.payload, error: null };
+      return { ...state, feeds: deduplicateFeeds(action.payload), error: null };
+    case 'APPEND_FEEDS':
+      // 合并后去重，保留最早出现的 feed
+      return { ...state, feeds: deduplicateFeeds([...state.feeds, ...action.payload]), error: null };
+    case 'SET_PAGINATION':
+      return {
+        ...state,
+        hasMore: action.payload.hasMore,
+        nextCursor: action.payload.nextCursor,
+      };
     case 'SET_SELECTED_FEED':
       return { ...state, selectedFeed: action.payload };
     case 'SET_GROUP_BY':
@@ -111,6 +140,8 @@ function feedReducer(state: FeedState, action: FeedAction): FeedState {
 interface FeedContextType {
   state: FeedState;
   setFeeds: (feeds: FlatFeed[]) => void;
+  appendFeeds: (feeds: FlatFeed[]) => void;
+  setPagination: (hasMore: boolean, nextCursor?: string) => void;
   setSelectedFeed: (feed: FlatFeed | null) => void;
   setGroupBy: (groupBy: GroupByType) => void;
   setCategoryFilter: (category: string | undefined) => void;
@@ -142,6 +173,14 @@ export function FeedProvider({ children }: { children: ReactNode }) {
 
   const setFeeds = useCallback((feeds: FlatFeed[]) => {
     dispatch({ type: 'SET_FEEDS', payload: feeds });
+  }, []);
+
+  const appendFeeds = useCallback((feeds: FlatFeed[]) => {
+    dispatch({ type: 'APPEND_FEEDS', payload: feeds });
+  }, []);
+
+  const setPagination = useCallback((hasMore: boolean, nextCursor?: string) => {
+    dispatch({ type: 'SET_PAGINATION', payload: { hasMore, nextCursor } });
   }, []);
 
   const setSelectedFeed = useCallback((feed: FlatFeed | null) => {
@@ -191,6 +230,8 @@ export function FeedProvider({ children }: { children: ReactNode }) {
   const value: FeedContextType = {
     state,
     setFeeds,
+    appendFeeds,
+    setPagination,
     setSelectedFeed,
     setGroupBy,
     setCategoryFilter,

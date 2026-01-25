@@ -80,10 +80,11 @@ export function filterFeeds(
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       const matchTitle = feed.title.toLowerCase().includes(query);
-      const matchContent = feed.content?.toLowerCase().includes(query);
+      const matchGeneratedTitle = feed.generatedTitle?.toLowerCase().includes(query);
       const matchSummary = feed.summary?.toLowerCase().includes(query);
-      
-      if (!matchTitle && !matchContent && !matchSummary) {
+      const matchSourceName = feed.sourceName?.toLowerCase().includes(query);
+
+      if (!matchTitle && !matchGeneratedTitle && !matchSummary && !matchSourceName) {
         return false;
       }
     }

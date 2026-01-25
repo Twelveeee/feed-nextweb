@@ -1,15 +1,34 @@
 import {
   QueryFeedsRequest,
   QueryFeedsResponse,
-  AddFeedSourceRequest,
+  AddFeedSourceParams,
+  SourcesOptionsResponse,
   FlatFeed,
+  ApiResponse,
 } from '@/types';
 import { adaptFeeds } from './adapter';
 
 /**
- * 查询文章列表
+ * 处理 API 响应
  */
-export async function queryFeeds(params: QueryFeedsRequest): Promise<FlatFeed[]> {
+function handleApiResponse<T>(result: ApiResponse<T>): T {
+  if (result.errno !== 0) {
+    throw new Error(`[${result.errno}] ${result.errmsg}`);
+  }
+  if (result.data === null) {
+    throw new Error('响应数据为空');
+  }
+  return result.data;
+}
+
+/**
+ * 查询文章列表（支持游标分页）
+ */
+export async function queryFeeds(params: QueryFeedsRequest): Promise<{
+  feeds: FlatFeed[];
+  hasMore: boolean;
+  nextCursor?: string;
+}> {
   const response = await fetch('/api/query', {
     method: 'POST',
     headers: {
@@ -18,38 +37,20 @@ export async function queryFeeds(params: QueryFeedsRequest): Promise<FlatFeed[]>
     body: JSON.stringify(params),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || '获取文章失败');
-  }
+  const result: ApiResponse<QueryFeedsResponse> = await response.json();
+  const data = handleApiResponse(result);
 
-  const data: QueryFeedsResponse = await response.json();
-  const feeds = adaptFeeds(data.feeds);
-  
-  const uniqueFeedsMap = new Map<string, FlatFeed>();
-  
-  for (const feed of feeds) {
-    const existing = uniqueFeedsMap.get(feed.id);
-    if (!existing) {
-      uniqueFeedsMap.set(feed.id, feed);
-    } else {
-      // 如果已存在，比较发布时间，保留较新的
-      if (new Date(feed.pubTime) > new Date(existing.pubTime)) {
-        uniqueFeedsMap.set(feed.id, feed);
-      }
-    }
-  }
-
-  // 将 Map 转回数组，并按时间倒序排序
-  return Array.from(uniqueFeedsMap.values()).sort((a, b) =>
-    new Date(b.pubTime).getTime() - new Date(a.pubTime).getTime()
-  );
+  return {
+    feeds: adaptFeeds(data.feeds),
+    hasMore: data.has_more,
+    nextCursor: data.next_cursor,
+  };
 }
 
 /**
  * 添加RSS订阅源
  */
-export async function addFeedSource(params: AddFeedSourceRequest): Promise<void> {
+export async function addFeedSource(params: AddFeedSourceParams): Promise<number> {
   const response = await fetch('/api/add-feed-source', {
     method: 'POST',
     headers: {
@@ -58,25 +59,37 @@ export async function addFeedSource(params: AddFeedSourceRequest): Promise<void>
     body: JSON.stringify(params),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || '添加订阅源失败');
-  }
+  const result: ApiResponse<{ id: number }> = await response.json();
+  const data = handleApiResponse(result);
+
+  return data.id;
 }
 
 /**
- * 获取最近N天的文章
+ * 获取订阅源选项（分类和来源列表）
  */
-export async function getRecentFeeds(days: number = 1, limit: number = 500): Promise<FlatFeed[]> {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - days);
+export async function getSourcesOptions(): Promise<SourcesOptionsResponse> {
+  const response = await fetch('/api/sources/options', {
+    method: 'GET',
+  });
 
+  const result: ApiResponse<SourcesOptionsResponse> = await response.json();
+  return handleApiResponse(result);
+}
+
+/**
+ * 获取最近的文章（简化版）
+ */
+export async function getRecentFeeds(
+  limit: number = 20,
+  cursor?: string
+): Promise<{
+  feeds: FlatFeed[];
+  hasMore: boolean;
+  nextCursor?: string;
+}> {
   return queryFeeds({
-    start: start.toISOString(),
-    end: end.toISOString(),
     limit,
-    query: '',
-    summarize: false,
+    cursor,
   });
 }

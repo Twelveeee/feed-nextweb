@@ -1,83 +1,82 @@
 /**
- * RSS Feed 文章类型定义
+ * 统一 API 响应结构
  */
-export interface Feed {
-  labels: FeedLabels;
-  time: string; // ISO 8601 格式时间戳
+export interface ApiResponse<T = any> {
+  errno: number;
+  errmsg: string;
+  data: T | null;
 }
 
 /**
- * Feed Labels 结构（后端返回的嵌套结构）
+ * 后端返回的 Feed 数据结构
  */
-export interface FeedLabels {
-  category?: string;
-  content?: string;
+export interface Feed {
+  id: number;
+  source_id: number;
+  title: string;
   link: string;
   pub_time: string; // ISO 8601 格式
-  source: string;
+  generated_title?: string;
+  score?: number;
   summary?: string;
-  summary_html_snippet?: string;
-  tags?: string;
-  title: string;
-  type: string;
+  summary_html?: string;
+  created_at: string; // ISO 8601 格式
+  source: FeedSource;
+}
+
+/**
+ * 订阅源信息
+ */
+export interface FeedSource {
+  id: number;
+  name: string;
+  category?: string;
+  source: string;
 }
 
 /**
  * 前端扁平化的 Feed 数据结构
-  */
- export interface FlatFeed {
-   id: string; // 使用 link 作为唯一标识
-   title: string;
-   link: string;
-   source: string;
-   category?: string;
-   content?: string;
-   summary?: string;
-   summaryHtml?: string;
-   tags?: string[];
-   pubTime: Date;
-   fetchTime: Date;
-   type: string;
-   isRead?: boolean; // 已读状态（前端计算）
- }
-
-/**
- * RSS 订阅源类型定义
  */
-export interface FeedSource {
-  name: string; // 必填，唯一
-  rss: RSSConfig;
-  interval?: string; // 抓取间隔，如 "1h30m"
-  labels?: Record<string, string>; // 自定义标签
+export interface FlatFeed {
+  id: number;
+  sourceId: number;
+  title: string;
+  generatedTitle?: string;
+  link: string;
+  source: string;
+  sourceName: string;
+  category?: string;
+  score?: number;
+  summary?: string;
+  summaryHtml?: string;
+  pubTime: Date;
+  createdAt: Date;
+  isRead?: boolean; // 已读状态（前端计算）
 }
 
 /**
- * RSS 配置（url 和 rsshub_route_path 二选一）
+ * 添加订阅源请求参数
  */
-export interface RSSConfig {
-  url?: string; // 直接的 RSS feed URL
-  rsshub_route_path?: string; // RSSHub 路由路径
+export interface AddFeedSourceParams {
+  name: string;
+  url: string;
+  category?: string;
+  enabled?: boolean;
 }
 
 /**
  * 查询文章请求参数
  */
 export interface QueryFeedsRequest {
-  start: string; // ISO 8601 格式
-  end: string; // ISO 8601 格式
+  source_id?: number;
+  categories?: string[];
+  sources?: string[];
+  min_score?: number;
+  max_score?: number;
+  start_at?: string; // ISO 8601 格式
+  end_at?: string; // ISO 8601 格式
   limit?: number;
-  query?: string;
-  summarize?: boolean;
-  label_filters?: LabelFilters; // Label 筛选
-}
-
-/**
- * Label 筛选条件
- */
-export interface LabelFilters {
-  category?: string;
-  source?: string;
-  [key: string]: string | undefined;
+  cursor?: string; // 游标分页
 }
 
 /**
@@ -85,14 +84,16 @@ export interface LabelFilters {
  */
 export interface QueryFeedsResponse {
   feeds: Feed[];
-  count: number;
+  has_more: boolean;
+  next_cursor?: string;
 }
 
 /**
- * 添加订阅源请求
+ * 订阅源选项响应
  */
-export interface AddFeedSourceRequest {
-  source: FeedSource;
+export interface SourcesOptionsResponse {
+  categories: string[];
+  sources: string[];
 }
 
 /**
